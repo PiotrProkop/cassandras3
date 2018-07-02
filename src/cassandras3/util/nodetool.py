@@ -4,15 +4,15 @@ import sh
 
 logger = logging.getLogger('cassandras3')
 
-CASSANDRA_DATA_DIR = '/var/lib/cassandra/data'
-
 
 class NodeTool(object):
-    def __init__(self, clients, hostname='localhost', host='127.0.0.1', port=7199):
+    def __init__(self, clients, hostname='localhost', host='127.0.0.1',
+                 port=7199, data_dir='/var/lib/cassandra/data'):
         self.s3 = clients.s3()
         self.hostname = hostname
         self.host = host
         self.port = port
+        self.data_dir = data_dir
 
     def backup(self, keyspace, bucket, timestamp):
         """
@@ -60,7 +60,7 @@ class NodeTool(object):
             table = filename.split('/')[:-1][-1]
 
             if table not in tables:
-                self._ensure_dir(table)
+                self._ensure_dir(table, keyspace)
                 tables.append(table)
             self._download_file(bucket, filename, keyspace, table)
 
@@ -96,21 +96,17 @@ class NodeTool(object):
     def _download_file(self, bucket, filename, keyspace, table):
         key = filename.split('/')[-1]
         self.s3.download_file(bucket, filename, '%s/%s/%s/%s' % (
-            CASSANDRA_DATA_DIR, keyspace, table, key))
+            self.data_dir, keyspace, table, key))
 
-    @staticmethod
-    def _ensure_dir(table):
+    def _ensure_dir(self, table, keyspace):
         try:
-            sh.mkdir('-p', '%s/%s' % (CASSANDRA_DATA_DIR, table))
+            sh.mkdir('-p', '%s/%s/%s' % (self.data_dir, keyspace, table))
         except:
             logger.warn('Could not create directory!')
 
-    @staticmethod
-    def _lookup_snapshots(tag):
+    def _lookup_snapshots(self, tag):
         try:
-            dirs = sh.find(CASSANDRA_DATA_DIR,
-                           '-name',
-                           tag)
+            dirs = sh.find(self.data_dir, '-name', tag)
         except:
             logger.warn('Unable to execute find, nodetool did not create ' +
                         'snapshot?')

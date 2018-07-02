@@ -30,16 +30,19 @@ def restore_cmd():  # pragma: no cover
               help='The hostname to use for restoring.')
 @click.option('--bucket', prompt='Your s3 bucket to restore from',
               help='The s3 bucket used to fetch the restore from.')
-def restore(region, host, port, backup, keyspace, hostname, bucket):  # pragma: no cover
+@click.option('--data-dir', default='/var/lib/cassandra/data',
+              help='Cassandra data directory to use for backup.')
+def restore(region, host, port, backup, keyspace, hostname, bucket, data_dir):  # pragma: no cover
     do_restore(region, host, port, backup, keyspace, hostname, bucket)
 
 
-def do_restore(region, host, port, backup, keyspace, hostname, bucket):
+def do_restore(region, host, port, backup, keyspace, hostname, bucket,
+               data_dir):
     setup_logging(logging.WARN)
 
     clients = ClientCache(region)
     if not hostname:
         hostname = socket.gethostname()
 
-    node = NodeTool(clients, hostname, host, port)
+    node = NodeTool(clients, hostname, host, port, data_dir)
     node.restore(keyspace, bucket, backup)
